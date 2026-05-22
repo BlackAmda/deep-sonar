@@ -1,6 +1,9 @@
 {
   "name": "deep-sonar",
   "version": "0.1.0",
+  "author": "Black Amda",
+  "developer": "AN Tech",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

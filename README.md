@@ -2,6 +2,8 @@
 
 Self-hosted semantic search service for MySQL databases. Connect any MySQL table, embed it with a local AI model, and search by meaning - not just keywords.
 
+![cover](assets/images/deep_sonar_cover.png)
+
 A user searching **"wireless headphones"** finds **"Bluetooth earbuds"** and **"wireless earphones"** because the model understands they refer to the same thing. No cloud API. No per-query cost. Runs entirely on your server.
 
 ## How it works
