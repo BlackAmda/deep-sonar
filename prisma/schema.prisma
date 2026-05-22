@@ -1,0 +1,86 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Project {
+  id             String    @id @default(cuid())
+  name           String
+  slug           String    @unique
+  apiKey         String    @unique
+  dbConfigEnc    String    @db.Text
+  tableName      String
+  textColumn     String
+  idColumn       String
+  vectorColumn   String    @default("embedding")
+  vectorCount    Int       @default(0)
+  lastIngestedAt DateTime?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  sessions  Session[]
+  usageLogs UsageLog[]
+}
+
+model Session {
+  id        String   @id
+  projectId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([expiresAt])
+}
+
+model UsageLog {
+  id        String   @id @default(cuid())
+  projectId String
+  query     String   @db.VarChar(1000)
+  results   Int
+  topScore  Float?
+  latencyMs Int
+  loggedAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([loggedAt])
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  VIEWER
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(VIEWER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions AdminSession[]
+}
+
+model AdminSession {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
