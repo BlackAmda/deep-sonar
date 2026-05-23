@@ -23,5 +23,12 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "template",
+    "src/components/ui/calendar.tsx",
+    "src/components/ui/carousel.tsx",
+    "src/components/ui/combobox.tsx",
+    "src/components/ui/resizable.tsx"
+  ]
 }
