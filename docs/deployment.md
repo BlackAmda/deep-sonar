@@ -80,6 +80,13 @@ pm2 save
 pm2 startup  # follow the printed command to enable auto-start
 ```
 
+## Environment requirements
+
+| Variable | Requirement |
+|---|---|
+| `ENCRYPTION_KEY` | Exactly 64 hex chars (32 bytes). Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `NEXTAUTH_SECRET` or `ADMIN_TOKEN` | At least one must be set. App throws at startup if both missing. |
+
 ## PM2 ecosystem config
 
 ```js
@@ -90,12 +97,14 @@ module.exports = {
       name: 'deep-sonar',
       script: 'node_modules/.bin/next',
       args: 'start',
-      instances: 1,
+      instances: 1,  // must stay 1 — rate limiter is process-local (in-memory Map)
       env: { NODE_ENV: 'production', PORT: 3000 }
     }
   ]
 };
 ```
+
+> **Rate limiter constraint:** bucket state is stored in a module-level `Map`. Running multiple PM2 instances (`instances: N`) multiplies the effective rate limit by N. Keep `instances: 1` unless you replace the rate limiter with a shared store (Redis).
 
 ## Nginx config
 
@@ -149,4 +158,11 @@ npm install
 npx prisma migrate deploy
 npm run build
 pm2 reload ecosystem.config.js
+```
+
+## Running tests
+
+```bash
+npm test           # watch mode
+npm run test:coverage  # coverage report
 ```

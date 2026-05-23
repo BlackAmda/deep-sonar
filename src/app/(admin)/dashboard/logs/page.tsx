@@ -68,7 +68,7 @@ export default async function LogsPage({ searchParams }: LogsPageProps) {
           >
             <Link href={filterUrl(undefined)}>All</Link>
           </Button>
-          {projects.map((p) => (
+          {projects.map((p: { id: string; name: string }) => (
             <Button
               key={p.id}
               variant={projectId === p.id ? "default" : "outline"}

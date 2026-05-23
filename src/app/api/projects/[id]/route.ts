@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { invalidate } from "@/lib/vector-cache";
+import { getSessionUser, hasPermission } from "@/lib/admin-auth";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -39,6 +40,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
+  const actor = await getSessionUser(req.cookies.get("admin_session")?.value);
+  if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasPermission(actor.role, "manage:projects"))
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { id } = await params;
   const body = (await req.json()) as Record<string, unknown>;
 
@@ -70,7 +76,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const actor = await getSessionUser(req.cookies.get("admin_session")?.value);
+  if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasPermission(actor.role, "manage:projects"))
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { id } = await params;
   await prisma.project.delete({ where: { id } });
   invalidate(id);

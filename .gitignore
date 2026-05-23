@@ -21,7 +21,6 @@ template
 # misc
 .DS_Store
 *.pem
-*.sh
 
 # debug
 npm-debug.log*

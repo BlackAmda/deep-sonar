@@ -37,7 +37,7 @@ export function UsageChart({ data }: { data: DayCount[] }) {
         <YAxis tick={{ fontSize: 11 }} allowDecimals={false} className="text-muted-foreground" />
         <Tooltip
           contentStyle={{ fontSize: 12 }}
-          formatter={(v: number) => [v, "Searches"]}
+          formatter={(v) => [v ?? 0, "Searches"] as [number, string]}
         />
         <Bar dataKey="count" className="fill-primary" radius={[3, 3, 0, 0]} />
       </BarChart>

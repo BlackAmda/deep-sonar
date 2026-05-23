@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { verifySessionCookieSync } from "@/lib/admin-auth";
+import { extractSessionToken } from "@/lib/admin-auth";
 
 export async function POST(req: NextRequest) {
   const cookie = req.cookies.get("admin_session")?.value;
 
   if (cookie) {
-    const token = verifySessionCookieSync(cookie);
+    const token = extractSessionToken(cookie);
     if (token) {
       await prisma.adminSession.deleteMany({ where: { id: token } });
     }
