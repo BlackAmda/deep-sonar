@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
 import { encrypt } from "@/lib/crypto";
+import { getSessionUser, hasPermission } from "@/lib/admin-auth";
+import { z } from "zod";
+
+const SQL_IDENTIFIER = /^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/;
+
+const ProjectSchema = z.object({
+  name: z.string().min(1).max(100),
+  slug: z.string().min(1).max(50),
+  host: z.string().min(1),
+  port: z.number().int().min(1).max(65535).optional(),
+  database: z.string().min(1),
+  user: z.string().min(1),
+  password: z.string().min(1),
+  tableName: z.string().regex(SQL_IDENTIFIER, "must be a valid SQL identifier"),
+  textColumn: z.string().regex(SQL_IDENTIFIER, "must be a valid SQL identifier"),
+  idColumn: z.string().regex(SQL_IDENTIFIER, "must be a valid SQL identifier"),
+  vectorColumn: z.string().regex(SQL_IDENTIFIER, "must be a valid SQL identifier").optional(),
+});
 
 export async function GET() {
   const today = new Date();
@@ -36,20 +54,16 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json()) as {
-    name: string;
-    slug: string;
-    host: string;
-    port?: number;
-    database: string;
-    user: string;
-    password: string;
-    tableName: string;
-    textColumn: string;
-    idColumn: string;
-    vectorColumn?: string;
-  };
+  const actor = await getSessionUser(req.cookies.get("admin_session")?.value);
+  if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasPermission(actor.role, "manage:projects"))
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const parsed = ProjectSchema.safeParse(await req.json());
+  if (!parsed.success)
+    return NextResponse.json({ error: "Validation failed", issues: parsed.error.issues }, { status: 400 });
+
+  const body = parsed.data;
   const slug = body.slug.toLowerCase().replace(/[^a-z0-9_]/g, "");
   const apiKey = `ds_${slug}_${nanoid(12)}`;
 

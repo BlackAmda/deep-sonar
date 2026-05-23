@@ -17,12 +17,15 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   VIEWER: ["view:logs", "view:projects"],
 };
 
+/** Returns true if `role` is granted `permission` in the built-in role matrix. */
 export function hasPermission(role: string, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
 }
 
 function hmacSecret(): string {
-  return process.env.NEXTAUTH_SECRET ?? process.env.ADMIN_TOKEN ?? "changeme";
+  const secret = process.env.NEXTAUTH_SECRET ?? process.env.ADMIN_TOKEN;
+  if (!secret) throw new Error("NEXTAUTH_SECRET or ADMIN_TOKEN must be set");
+  return secret;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -45,21 +48,24 @@ export function signSessionToken(token: string): string {
   return `${token}.${sig}`;
 }
 
-export function verifySessionCookieSync(cookieValue: string): string | null {
+/** Verifies HMAC signature on cookie and returns the raw session token, or null if invalid. */
+export function extractSessionToken(cookieValue: string): string | null {
   const dotIdx = cookieValue.lastIndexOf(".");
   if (dotIdx === -1) return null;
   const token = cookieValue.slice(0, dotIdx);
   const sig = cookieValue.slice(dotIdx + 1);
   const expected = createHmac("sha256", hmacSecret()).update(token).digest("hex");
-  if (sig !== expected) return null;
+  if (sig.length !== expected.length || !/^[0-9a-f]+$/.test(sig)) return null;
+  if (!timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expected, "hex"))) return null;
   return token;
 }
 
+/** Resolves a cookie value to the associated AdminUser, or null if expired/invalid/inactive. */
 export async function getSessionUser(
   cookieValue: string | undefined
 ): Promise<AdminUser | null> {
   if (!cookieValue) return null;
-  const token = verifySessionCookieSync(cookieValue);
+  const token = extractSessionToken(cookieValue);
   if (!token) return null;
 
   const session = await prisma.adminSession.findUnique({
