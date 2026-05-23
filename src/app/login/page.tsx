@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction } from "./actions";
-import logo from "../../../assets/images/DeepSonar.png";
 
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(loginAction, {});
@@ -21,14 +20,7 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 flex flex-col items-center gap-6 px-16 text-center">
-          <Image
-            src={logo}
-            alt="DeepSonar"
-            width={280}
-            height={280}
-            priority
-            className="drop-shadow-[0_0_40px_rgba(6,182,212,0.35)]"
-          />
+          <Image src="/DeepSonar.png" alt="DeepSonar" width={280} height={280} priority className="drop-shadow-[0_0_40px_rgba(6,182,212,0.35)]" />
           <div className="flex flex-col gap-2">
             <p className="text-cyan-400 text-sm font-medium tracking-widest uppercase">
               Semantic Search Platform
@@ -48,7 +40,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm flex flex-col gap-8">
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-3">
-            <Image src={logo} alt="DeepSonar" width={40} height={40} />
+            <Image src="/DeepSonar.png" alt="DeepSonar" width={40} height={40} />
             <span className="text-lg font-semibold">DeepSonar</span>
           </div>
 
