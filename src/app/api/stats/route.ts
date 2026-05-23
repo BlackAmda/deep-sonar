@@ -1,7 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSessionUser, hasPermission } from "@/lib/admin-auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const actor = await getSessionUser(req.cookies.get("admin_session")?.value);
+  if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasPermission(actor.role, "view:projects"))
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 

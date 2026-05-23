@@ -37,6 +37,7 @@ async function openClientConn(dbConfigEnc: string): Promise<mysql.Connection> {
   });
 }
 
+/** Loads all embedded rows from the project's client DB. Corrupt vectors are skipped (empty embedding). */
 export async function loadProjectVectors(project: {
   dbConfigEnc: string;
   tableName: string;
@@ -50,7 +51,14 @@ export async function loadProjectVectors(project: {
     );
     return rows.map((row) => {
       const raw = row[project.vectorColumn] as string | null;
-      const embedding: number[] = raw ? (JSON.parse(raw) as number[]) : [];
+      let embedding: number[] = [];
+      if (raw) {
+        try {
+          embedding = JSON.parse(raw) as number[];
+        } catch {
+          // Treat corrupt vector as un-embedded; won't match any query
+        }
+      }
       const data = { ...row } as Record<string, unknown>;
       delete data[project.vectorColumn];
       delete data.embedded_at;
@@ -61,6 +69,7 @@ export async function loadProjectVectors(project: {
   }
 }
 
+/** Embeds all un-embedded rows in the project's source table. Throws "INGEST_RUNNING" if already in progress. */
 export async function runIngest(projectId: string): Promise<IngestResult> {
   if (ingestLocks.has(projectId)) throw new Error("INGEST_RUNNING");
   ingestLocks.add(projectId);
@@ -113,16 +122,21 @@ export async function runIngest(projectId: string): Promise<IngestResult> {
                 [JSON.stringify(vector), row[project.idColumn]]
               );
               embedded++;
-            } catch {
+            } catch (e) {
               failed++;
+              if (failed === 1) console.error("Ingest batch error (first in batch):", e);
             }
           })
         );
       }
 
+      const [[{ actual }]] = (await conn.execute(
+        `SELECT COUNT(*) AS actual FROM \`${project.tableName}\` WHERE embedded_at IS NOT NULL`
+      )) as [RowDataPacket[], unknown];
+
       await prisma.project.update({
         where: { id: projectId },
-        data: { vectorCount: skipped + embedded, lastIngestedAt: new Date() },
+        data: { vectorCount: Number(actual), lastIngestedAt: new Date() },
       });
 
       invalidate(projectId);
