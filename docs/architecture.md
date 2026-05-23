@@ -19,6 +19,25 @@ Admin UI pages and the external search API all run inside the same Next.js proce
 
 Credentials have exactly one entry point: the admin dashboard registration form. After that, they are AES-256-GCM encrypted and stored in MySQL. They are never returned by any API endpoint.
 
+### Auth layers
+
+Admin API routes use two independent guards:
+
+1. **`middleware.ts`** — HMAC-verifies the `admin_session` cookie (constant-time comparison via Web Crypto). Blocks unauthenticated requests before they reach handlers.
+2. **Handler-level** — each mutating handler (`POST /api/projects`, `PATCH/DELETE /api/projects/[id]`, `POST rotate-key`, `GET /api/logs`, `GET /api/stats`) calls `getSessionUser()` + `hasPermission()` to enforce role. Middleware alone is not sufficient; handler checks ensure correct behaviour even if middleware config changes.
+
+### Role matrix
+
+| Role | manage:projects | manage:users | view:logs | view:projects |
+|------|:-:|:-:|:-:|:-:|
+| SUPER_ADMIN | ✓ | ✓ | ✓ | ✓ |
+| ADMIN | ✓ | — | ✓ | ✓ |
+| VIEWER | — | — | ✓ | ✓ |
+
+### HMAC session cookie
+
+Cookies are signed with HMAC-SHA256. Verification uses `timingSafeEqual` to prevent timing side-channels. The secret is read from `NEXTAUTH_SECRET` (preferred) or `ADMIN_TOKEN`; the app throws at startup if neither is set.
+
 ### Phase 1 - one-time admin setup
 
 1. Admin opens dashboard, fills in project registration form
@@ -94,10 +113,11 @@ This scales safely to ~50,000 rows before needing an ANN (approximate nearest ne
 DB configs are encrypted before storage using Node.js built-in `crypto`:
 
 - Algorithm: AES-256-GCM
-- Key: 32-byte hex from `ENCRYPTION_KEY` env var
-- IV: random 12 bytes, prepended to ciphertext
-- Auth tag: appended to ciphertext
+- Key: 32-byte from `ENCRYPTION_KEY` — **must be exactly 64 hex chars**; app throws at startup if wrong length
+- IV: random 12 bytes per encryption (never reused)
+- Auth tag: verified on decrypt; tampered ciphertext throws
 - Stored as: `iv:authTag:ciphertext` (hex-encoded, colon-separated)
+- Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 
 ## Module responsibilities
 
